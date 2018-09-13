@@ -17,3 +17,6 @@ main function parameter：
 （2）which place is this node in the network        
 （3）which kind is this mixnode  1：the first one 2:the middle 3:the last one      
 for example: ./Mixnode 192.168.1.40 4 3
+
+# Note:
+you need to use the Multiprecision Integer and Rational Arithmetic C Library(MIRACL)and get it here:https://libraries.docs.miracl.com/
