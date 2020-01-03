@@ -637,13 +637,11 @@ int getincompletePublicKey(CIPHERTYPE_SHORT *secret_ShareKey_di,int mixnode_Type
 	CIPHERTYPE_BIG groupG_Generator_gBig;
 	CIPHERTYPE_BIG secret_ShareKey_diBig;
 	CIPHERTYPE_BIG bignumpow_ResultBig;
-	CIPHERTYPE_BIG bignummod_ResultBig;
 	CIPHERTYPE_BIG incomplete_PublicKey_eBig;
 	CIPHERTYPE_BIG primeNumber_pBig;
 	prior_PublicKey_eBig = mirvar(0);
     groupG_Generator_gBig = mirvar(0);
     bignumpow_ResultBig = mirvar(0);
-	bignummod_ResultBig = mirvar(0);
 	secret_ShareKey_diBig = mirvar(0);
     incomplete_PublicKey_eBig = mirvar(0);
 	primeNumber_pBig = mirvar(0);
@@ -659,7 +657,7 @@ int getincompletePublicKey(CIPHERTYPE_SHORT *secret_ShareKey_di,int mixnode_Type
         }
 		cinstr(prior_PublicKey_eBig,prior_PublicKey_eStr);
 		multiply(prior_PublicKey_eBig,bignumpow_ResultBig,incomplete_PublicKey_eBig);
-		divide(incomplete_PublicKey_eBig,primeNumber_pBig,bignummod_ResultBig);
+		divide(incomplete_PublicKey_eBig,primeNumber_pBig,primeNumber_pBig);
 		cotstr(incomplete_PublicKey_eBig,incomplete_PublicKey_eStr);
     }else{
     	cotstr(bignumpow_ResultBig,incomplete_PublicKey_eStr);
@@ -980,7 +978,6 @@ int precomputationPostprocessing(int prior_Socket,int next_Socket,int mixnode_Ty
 	CIPHERTYPE_BIG prior_PlainText_gXBig[MSGNUM];
 	CIPHERTYPE_BIG incomplete_PlainText_PiRSBig[MSGNUM];
 	CIPHERTYPE_BIG bignumpow_gXdi_ResultBig[MSGNUM];
-	CIPHERTYPE_BIG bignummod_ResultBig[MSGNUM];
 	CIPHERTYPE_BIG secret_ShareKey_diBig;
 	CIPHERTYPE_BIG primeNumber_pBig;
 	char prior_PlainText_PiRSStr[MSGNUM][CIPHERSIZE];
@@ -993,7 +990,6 @@ int precomputationPostprocessing(int prior_Socket,int next_Socket,int mixnode_Ty
 		prior_PlainText_gXBig[i] = mirvar(0);
 		incomplete_PlainText_PiRSBig[i] = mirvar(0);
 		bignumpow_gXdi_ResultBig[i] = mirvar(0);
-		bignummod_ResultBig[i] = mirvar(0);
 	}
 	secret_ShareKey_diBig = mirvar(0);
 	primeNumber_pBig = mirvar(0);
@@ -1022,7 +1018,7 @@ int precomputationPostprocessing(int prior_Socket,int next_Socket,int mixnode_Ty
 		cinstr(bignumpow_gXdi_ResultBig[i],bignumpow_gXdi_ResultStr[i]);
 		*/
 		multiply(bignumpow_gXdi_ResultBig[i],prior_PlainText_PiRSBig[i],incomplete_PlainText_PiRSBig[i]);
-		divide(incomplete_PlainText_PiRSBig[i],primeNumber_pBig,bignummod_ResultBig[i]);
+		divide(incomplete_PlainText_PiRSBig[i],primeNumber_pBig,primeNumber_pBig);
 		cotstr(incomplete_PlainText_PiRSBig[i],incomplete_PlainText_PiRSStr[i]);
     }
     if(mixnode_Type == 3){
@@ -1110,8 +1106,10 @@ int realtimeProcessingEncryptoMsg(char (*prior_realtime_EncryptoMsgStr)[CIPHERSI
 	CIPHERTYPE_BIG prior_realtime_EncryptoMsgBig[MSGNUM];
 	CIPHERTYPE_BIG bignumdiv_ResultBig[MSGNUM];
 	CIPHERTYPE_BIG bignummul_ResultBig[MSGNUM];
+	CIPHERTYPE_BIG primeNumber_pBig;
 	char bignummul_ResultStr[MSGNUM][CIPHERSIZE];
 	mirsys(CIPHERSIZE,DEC);
+	
 	for(int i = 0;i < MSGNUM;i++){
 		prior_realtime_EncryptoMsgBig[i] = mirvar(0);
 		processing_Value_RBig[i] = mirvar(0);
@@ -1119,17 +1117,25 @@ int realtimeProcessingEncryptoMsg(char (*prior_realtime_EncryptoMsgStr)[CIPHERSI
 		bignumdiv_ResultBig[i] = mirvar(0);
 		bignummul_ResultBig[i] = mirvar(0);
 	}
+	primeNumber_pBig = mirvar(0);
+	cinstr(primeNumber_pBig,getPrimeNumber());
 	for(int i = 0;i < MSGNUM;i++){
 		cinstr(prior_realtime_EncryptoMsgBig[i],prior_realtime_EncryptoMsgStr[i]);
 		cinstr(public_ShareKey_KBig[i],public_ShareKey_KStr[i]);
 		cinstr(processing_Value_RBig[i],processing_Value_RStr[i]);
+		/*
 		if(divisible(prior_realtime_EncryptoMsgBig[i],public_ShareKey_KBig[i])){
 			divide(prior_realtime_EncryptoMsgBig[i],public_ShareKey_KBig[i],bignumdiv_ResultBig[i]);
 		}else{
 			printf("can not divisible\n");
 			return -1;
 		}
+		*/
+		xgcd(public_ShareKey_KBig[i],primeNumber_pBig,public_ShareKey_KBig[i],public_ShareKey_KBig[i],\
+				public_ShareKey_KBig[i]);
+		multiply(prior_realtime_EncryptoMsgBig[i],public_ShareKey_KBig[i],bignumdiv_ResultBig[i]);
 		multiply(bignumdiv_ResultBig[i],processing_Value_RBig[i],bignummul_ResultBig[i]);
+		divide(bignumdiv_ResultBig[i],primeNumber_pBig,primeNumber_pBig);
 		cotstr(bignummul_ResultBig[i],realtime_EncryptoMsgStr[i]);
 	}
 	mirexit();
@@ -1305,21 +1311,29 @@ int realtimePostprocessing(int next_Socket,char (*cryptoMessage)[CIPHERSIZE],cha
 	CIPHERTYPE_BIG cryptoMessageBig[MSGNUM];
 	CIPHERTYPE_BIG plainText_PiRSBig[MSGNUM];
 	CIPHERTYPE_BIG plainText_MessageBig[MSGNUM];
+	CIPHERTYPE_BIG primeNumber_pBig;
 	mirsys(CIPHERSIZE,DEC);
 	for(int i = 0;i < MSGNUM;i++){
 		cryptoMessageBig[i] = mirvar(0);
 		plainText_PiRSBig[i] = mirvar(0);
 		plainText_MessageBig[i] = mirvar(0);
 	}
+	primeNumber_pBig = mirvar(0);
+	cinstr(primeNumber_pBig,getPrimeNumber());
 	for(int i = 0;i < MSGNUM;i++){
 		cinstr(cryptoMessageBig[i],cryptoMessage[i]);
 		cinstr(plainText_PiRSBig[i],plainText_PiRSStr[i]);
+		/*
 		if(divisible(cryptoMessageBig[i],plainText_PiRSBig[i])){
 			divide(cryptoMessageBig[i],plainText_PiRSBig[i],plainText_MessageBig[i]);
 		}else{
 			printf("can not divisible!\n");
 			return -1;
 		}
+		*/
+		xgcd(plainText_PiRSBig[i],primeNumber_pBig,plainText_PiRSBig[i],plainText_PiRSBig[i],plainText_PiRSBig[i]);
+		multiply(plainText_PiRSBig[i],cryptoMessageBig[i],plainText_MessageBig[i]);
+		divide(plainText_MessageBig[i],primeNumber_pBig,primeNumber_pBig);
 		cotstr(plainText_MessageBig[i],plainText_MessageStr[i]);
 	}
 	if(sendnextMsg(next_Socket,plainText_MessageStr) == -1){
@@ -1347,7 +1361,6 @@ void calculateProcessingEncrypto(char (*processing_Value_RStr)[CIPHERSIZE],char 
     CIPHERTYPE_BIG prior_cryptoProcessing_ValueBig[MSGNUM];
     CIPHERTYPE_BIG incomplete_cryptoProcessing_ValueBig[MSGNUM];
     CIPHERTYPE_BIG bignumpow_eX_ResultBig[MSGNUM];
-	CIPHERTYPE_BIG bignummod_ResultBig[MSGNUM];
     CIPHERTYPE_BIG publicKey_eBig;
     CIPHERTYPE_BIG processing_Value_RBig[MSGNUM];
     CIPHERTYPE_BIG processing_Value_XBig[MSGNUM];
@@ -1360,7 +1373,6 @@ void calculateProcessingEncrypto(char (*processing_Value_RStr)[CIPHERSIZE],char 
         prior_cryptoProcessing_ValueBig[i] = mirvar(0);
         incomplete_cryptoProcessing_ValueBig[i] = mirvar(0);
         bignumpow_eX_ResultBig[i] = mirvar(0);
-		bignummod_ResultBig[i] = mirvar(0);
     }
     primeNumber_pBig = mirvar(0);
     publicKey_eBig = mirvar(0);
@@ -1373,7 +1385,7 @@ void calculateProcessingEncrypto(char (*processing_Value_RStr)[CIPHERSIZE],char 
         powmod(publicKey_eBig,processing_Value_XBig[i],primeNumber_pBig,bignumpow_eX_ResultBig[i]);
         multiply(bignumpow_eX_ResultBig[i],processing_Value_RBig[i],incomplete_cryptoProcessing_ValueBig[i]);
         multiply(prior_cryptoProcessing_ValueBig[i],incomplete_cryptoProcessing_ValueBig[i],cryptoProcessing_ValueBig[i]);
-		divide(cryptoProcessing_ValueBig[i],primeNumber_pBig,bignummod_ResultBig[i]);
+		divide(cryptoProcessing_ValueBig[i],primeNumber_pBig,primeNumber_pBig);
 		cotstr(cryptoProcessing_ValueBig[i],cryptoProcessing_ValueStr[i]);
     }
     mirexit();
@@ -1400,7 +1412,6 @@ void calculateMixingEncrypto(char (*processing_Value_SStr)[CIPHERSIZE],char (*pr
 	CIPHERTYPE_BIG incomplete_cryptoMixing_ValueBig[MSGNUM];
     CIPHERTYPE_BIG cryptoMixing_ValueBig[MSGNUM];
     CIPHERTYPE_BIG bignumpow_eX_ResultBig[MSGNUM];
-	CIPHERTYPE_BIG bignummod_ResultBig[MSGNUM];
     CIPHERTYPE_BIG publicKey_eBig;
     CIPHERTYPE_BIG primeNumber_pBig;
     mirsys(CIPHERSIZE,DEC);
@@ -1411,7 +1422,6 @@ void calculateMixingEncrypto(char (*processing_Value_SStr)[CIPHERSIZE],char (*pr
 		incomplete_cryptoMixing_ValueBig[i] = mirvar(0);
         cryptoMixing_ValueBig[i] = mirvar(0);
         bignumpow_eX_ResultBig[i] = mirvar(0);
-		bignummod_ResultBig[i] = mirvar(0);
     }
     publicKey_eBig = mirvar(0);
     primeNumber_pBig = mirvar(0);
@@ -1426,7 +1436,7 @@ void calculateMixingEncrypto(char (*processing_Value_SStr)[CIPHERSIZE],char (*pr
         powmod(publicKey_eBig,processing_Value_XBig[i],primeNumber_pBig,bignumpow_eX_ResultBig[i]);
         multiply(bignumpow_eX_ResultBig[i],processing_Value_SBig[i],incomplete_cryptoMixing_ValueBig[i]);
         multiply(incomplete_cryptoMixing_ValueBig[i],prior_cryptoMixing_ValueBig[Pi_NumberGroup[i]],cryptoMixing_ValueBig[i]);
-		divide(cryptoMixing_ValueBig[i],primeNumber_pBig,bignummod_ResultBig[i]);
+		divide(cryptoMixing_ValueBig[i],primeNumber_pBig,primeNumber_pBig);
 		cotstr(cryptoMixing_ValueBig[i],cryptoMixing_ValueStr[i]);
 	}
     mirexit();
@@ -1449,14 +1459,12 @@ void calculateProcessingGX(CIPHERTYPE_SHORT groupG_Generator_g,char processing_V
 	CIPHERTYPE_BIG prior_gXBig[MSGNUM];
 	CIPHERTYPE_BIG incomplete_gXBig[MSGNUM];
 	CIPHERTYPE_BIG result_gXBig[MSGNUM];
-	CIPHERTYPE_BIG bignummod_ResultBig[MSGNUM];
 	mirsys(CIPHERSIZE,DEC);
 	for(int i = 0;i < MSGNUM;i++){
 		processing_Value_XBig[i] = mirvar(0);
 		prior_gXBig[i] = mirvar(0);
 		incomplete_gXBig[i] = mirvar(0);
 		result_gXBig[i] = mirvar(0);
-		bignummod_ResultBig[i] = mirvar(0);
 	}
 	groupG_Generator_gBig = mirvar(0);
 	primeNumber_pBig = mirvar(0);
@@ -1467,7 +1475,7 @@ void calculateProcessingGX(CIPHERTYPE_SHORT groupG_Generator_g,char processing_V
 		cinstr(prior_gXBig[i],prior_gXStr[i]);
 		powmod(groupG_Generator_gBig,processing_Value_XBig[i],primeNumber_pBig,incomplete_gXBig[i]);
 		multiply(incomplete_gXBig[i],prior_gXBig[i],result_gXBig[i]);
-		divide(result_gXBig[i],primeNumber_pBig,bignummod_ResultBig[i]);
+		divide(result_gXBig[i],primeNumber_pBig,primeNumber_pBig);
 		cotstr(result_gXBig[i],result_gXStr[i]);
 	}
 	mirexit();
@@ -1491,14 +1499,12 @@ void calculateMixingGX(CIPHERTYPE_SHORT groupG_Generator_g,char processing_Value
     CIPHERTYPE_BIG prior_gXBig[MSGNUM];
     CIPHERTYPE_BIG incomplete_gXBig[MSGNUM];
     CIPHERTYPE_BIG result_gXBig[MSGNUM];
-	CIPHERTYPE_BIG bignummod_ResultBig[MSGNUM];
     mirsys(CIPHERSIZE,DEC);
     for(int i = 0;i < MSGNUM;i++){
         processing_Value_XBig[i] = mirvar(0);
         prior_gXBig[i] = mirvar(0);
         incomplete_gXBig[i] = mirvar(0);
         result_gXBig[i] = mirvar(0);
-		bignummod_ResultBig[i] = mirvar(0);
     }
     groupG_Generator_gBig = mirvar(0);
     primeNumber_pBig = mirvar(0);
@@ -1509,7 +1515,7 @@ void calculateMixingGX(CIPHERTYPE_SHORT groupG_Generator_g,char processing_Value
         cinstr(prior_gXBig[Pi_NumberGroup[i]],prior_gXStr[Pi_NumberGroup[i]]);
         powmod(groupG_Generator_gBig,processing_Value_XBig[i],primeNumber_pBig,incomplete_gXBig[i]);
         multiply(incomplete_gXBig[i],prior_gXBig[Pi_NumberGroup[i]],result_gXBig[i]);
-		divide(result_gXBig[i],primeNumber_pBig,bignummod_ResultBig[i]);
+		divide(result_gXBig[i],primeNumber_pBig,primeNumber_pBig);
         cotstr(result_gXBig[i],result_gXStr[i]);
     }
     mirexit();
